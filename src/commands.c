@@ -1,7 +1,16 @@
 
 #include <string.h>
 #include <stdio.h>
+#include "commands.h"
+#include "db.h"
 
+
+
+void test(){
+
+    db_test();
+
+}
 
 void add_to_collection(int argc, char *argv[]){
 
@@ -25,11 +34,9 @@ void perform_command(int argc, char *argv[]){
 
 
     //argv[1] contains the command, argv[2] ... argv[n] contains the command arguments
-
-
     char *command = argv[1];
 
-        if(strcmp(command, "add") == 0){
+    if(strcmp(command, "add") == 0){
 
         fprintf(stderr, "add command not implemented\n");
 
@@ -49,6 +56,10 @@ void perform_command(int argc, char *argv[]){
         fprintf(stderr, "missing command not implemented\n");
 
 
+    }else if(strcmp(command, "testdb") == 0){
+        printf("Testing db...\n");
+        test();
+    
     }else{
         printf("ERROR: Invalid command\n");
     }

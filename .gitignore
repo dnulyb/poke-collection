@@ -1,3 +1,7 @@
+#Program files
+main
+*.db
+
 #VSCode
 .vscode/*
 

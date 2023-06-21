@@ -1,9 +1,10 @@
 TARGET = main
 CC = gcc
 CFLAGS = -g -std=c11 -Wall
+LFLAGS = -lsqlite3
 
-HEADERS = commands.h
-OBJECTS = main.o commands.o
+HEADERS = commands.h db.h
+OBJECTS = main.o commands.o db.o
 
 default: $(TARGET)
 all: default
@@ -12,7 +13,7 @@ all: default
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(TARGET): $(OBJECTS)
-	$(CC) $(OBJECTS) -o $@
+	$(CC) $(OBJECTS) $(LFLAGS) -o $@
 
 clean:
 	-rm -f $(OBJECTS)
