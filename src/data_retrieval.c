@@ -3,18 +3,14 @@
 #include <stdlib.h>
 #include <curl/curl.h>
 #include <cjson/cJSON.h>
+#include "data_retrieval.h"
 
 // Filepaths and urls
-static char *key_location = "../keys.txt"; //user has to make sure keys.txt exists and contains the api key
-static char *set_url = "https://api.pokemontcg.io/v2/sets?select=id,name,printedTotal&orderBy=releaseDate";
+static char *key_location = "../keys.txt"; //location of file containing pokemontcg api key
+static char *sets_url = "https://api.pokemontcg.io/v2/sets?select=id,name,printedTotal&orderBy=releaseDate";
 
 
-//curl custom buffer
-typedef struct {
-    unsigned char *buffer;
-    size_t len;
-    size_t buflen;
-} get_request;
+
 
 #define CHUNK_SIZE 2048
 
@@ -64,30 +60,31 @@ void test_data_retrieval(){
 
 void retrieve_sets(){
 
-    char key[128];
-    FILE *fp;
+    //Get all sets as JSON from the url
+    get_request result = send_get_request(sets_url, true);
+    //printf("Received data in retrieve_sets: \n%s\n", result.buffer);
+    cJSON *root = cJSON_Parse(result.buffer);
 
-    // Get API key from file
-    fp = fopen(key_location, "r");
-    if(fp == NULL){
-        fprintf(stderr, "fopen: Error opening keys.txt\n");
+    if(root == NULL){
+        fprintf(stderr, "cJSON parsing failed: Invalid JSON.\n");
         return;
     }
 
-    if((fgets(key, 128, fp)) == NULL) {
-        fprintf(stderr, "fgets: Error opening keys.txt\n");
-        return;
-    }
+    int n = cJSON_GetArraySize(root);
+    printf("JSON array size: %d\n", n);
+    cJSON *data = NULL;
+    cJSON *data2 = NULL;
 
-    //printf("length of string: %ld\n", strlen(buffer));
+    data = cJSON_GetObjectItem(root, "data");
+    int set_count = cJSON_GetArraySize(data);
+    printf("set count in JSON: %d\n", set_count);
 
-    fclose(fp);
+    free(result.buffer);
 
-    // Construct the complete header string
-    char header[128];
-    strcpy(header, "X-Api-Key: ");
-    strcat(header, key);
+}
 
+
+get_request send_get_request(char *url, bool use_api_key){
 
     //Setup request
     CURL *curl;
@@ -100,16 +97,33 @@ void retrieve_sets(){
     if(curl){
 
         //Setup curl header
+
         struct curl_slist *headers = NULL;
         //Remove unnecessary default curl header
         headers = curl_slist_append(headers, "Accept:");
 
-        //Add the custom header
-        headers = curl_slist_append(headers, header);
+        // Add API key to header if required
+        if(use_api_key){
+
+            // Get the API key as string 
+            char *key = get_api_key();
+
+            // Construct the complete header string
+            char header[128];
+            strcpy(header, "X-Api-Key: ");
+            strcat(header, key);
+
+            free(key);
+
+            //Add the custom api header
+            headers = curl_slist_append(headers, header);
+        }
+
+        
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
         //Add url
-        curl_easy_setopt(curl, CURLOPT_URL, set_url);
+        curl_easy_setopt(curl, CURLOPT_URL, url);
 
         //Debugging verbose
         //curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
@@ -121,7 +135,7 @@ void retrieve_sets(){
         // Send the request
         res = curl_easy_perform(curl);
 
-        // Make sure there are no errors
+        // Check for errors
         if(res != CURLE_OK){
             fprintf(stderr, "retrieve_sets() curl request failed: %s\n", curl_easy_strerror(res));
         }
@@ -131,7 +145,6 @@ void retrieve_sets(){
         //printf("curl request result: %u\n", res);
         printf("Total received bytes: %zu\n", req.len);
         //printf("Received data: \n%s\n", req.buffer);
-        free(req.buffer);
 
         // Clean up
         curl_slist_free_all(headers);
@@ -139,5 +152,31 @@ void retrieve_sets(){
     }
 
     curl_global_cleanup();
+
+    return req;
+
+}
+
+char* get_api_key(){
+
+    char *key = malloc(sizeof(char) * 128);
+    FILE *fp;
+    
+    fp = fopen(key_location, "r");
+    if(fp == NULL){
+        fprintf(stderr, "fopen: Error opening file containing API key\n");
+        //return
+    }
+
+    if((fgets(key, 128, fp)) == NULL) {
+        fprintf(stderr, "fgets: Error reading API key\n");
+        //return;
+    }
+
+    //printf("length of string: %ld\n", strlen(buffer));
+
+    fclose(fp);
+
+    return key;
 
 }
