@@ -5,7 +5,6 @@
 
 int db_test(){
 
-
     sqlite3 *db;
     int rc;
 

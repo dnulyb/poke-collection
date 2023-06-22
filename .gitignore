@@ -1,9 +1,12 @@
-#Program files
+# Program files
 main
 *.db
 
-#VSCode
+# VSCode
 .vscode/*
+
+# Other
+notes
 
 # Prerequisites
 *.d

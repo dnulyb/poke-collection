@@ -1,10 +1,10 @@
 TARGET = main
 CC = gcc
 CFLAGS = -g -std=c11 -Wall
-LFLAGS = -lsqlite3
+LFLAGS = -lsqlite3 -lcurl -lcjson
 
-HEADERS = commands.h db.h
-OBJECTS = main.o commands.o db.o
+HEADERS = commands.h db.h data_retrieval.h
+OBJECTS = main.o commands.o db.o data_retrieval.o
 
 default: $(TARGET)
 all: default
