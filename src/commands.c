@@ -8,7 +8,6 @@
 
 void test(){
 
-    db_test();
 
 }
 

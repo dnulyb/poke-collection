@@ -4,6 +4,7 @@
 #include <curl/curl.h>
 #include <cjson/cJSON.h>
 #include "data_retrieval.h"
+#include "db.h"
 
 // Filepaths and urls
 static char *key_location = "../keys.txt"; //location of file containing pokemontcg api key
@@ -49,15 +50,6 @@ size_t write_callback(char *ptr, size_t size, size_t nmemb, void *userdata)
 }
 
 
-void test_data_retrieval(){
-
-    printf("test_data_retrieval start..\n");
-    CURL *curl = curl_easy_init();
-    cJSON *json = cJSON_Parse("this is just a test, not a json file");
-    printf("test_data_retrieval complete.\n");
-
-}
-
 void retrieve_sets(){
 
     //Get all sets as JSON from the url
@@ -76,29 +68,61 @@ void retrieve_sets(){
     int set_count = cJSON_GetArraySize(data);
     //printf("set count in JSON: %d\n", set_count);
 
-    //Loop through the data, one set at a time
-    cJSON *elem = NULL;
-    cJSON *id = NULL;
-    cJSON *name = NULL;
-    cJSON *ncards = NULL; //number of cards
-    for(int i = 0; i < set_count; i++){
-        elem = cJSON_GetArrayItem(data, i);
-        id = cJSON_GetObjectItem(elem, "id");
-        name = cJSON_GetObjectItem(elem, "name");
-        ncards = cJSON_GetObjectItem(elem, "printedTotal");
-        printf("Set info: %s | %s | %d\n", id->valuestring, name->valuestring, ncards->valueint);
+
+
+
+
+    // Store data in sqlite database
+    sqlite3 *db = db_open();
+    if(db != NULL){
+
+        //Transaction to avoid doing many inserts
+        db_exec(db, "BEGIN TRANSACTION;");
+
+        //Insert the data, one set at a time
+        cJSON *elem = NULL;
+        char *id;
+        char *name;
+        int ncards; //number of cards printed in the set
+        char *query;
+        for(int i = 0; i < set_count; i++){
+
+            //Retrieve relevant data
+            elem = cJSON_GetArrayItem(data, i);
+            id = cJSON_GetObjectItem(elem, "id")->valuestring;
+            name = cJSON_GetObjectItem(elem, "name")->valuestring;
+            ncards = cJSON_GetObjectItem(elem, "printedTotal")->valueint;
+            //printf("Set info: %s | %s | %d\n", id, name, ncards);
+            
+            //Build query and send to db
+            query = sqlite3_mprintf(insert_sets, id, name, ncards);
+            db_exec(db, query);
+            
+            sqlite3_free(query);
+
+        }
+
+        db_exec(db, "END TRANSACTION;");
+        db_close(db);
     }
 
     
+    //Cleanup
     cJSON_Delete(root);
     free(result.buffer);
 
 }
 
 
-//Send GET request to the provided url
-//returns the data given from the request in a buffer
-//this buffer must be free'd by the user  
+/* 
+    Send GET request to the provided url
+    
+    param:  url          - the url for the request
+            use_api_key  - true if api key should be put in the 
+                            request header, otherwise false 
+    return: The data received from the request, in a buffer.
+                note: buffer must be free'd by the caller  
+*/
 get_request send_get_request(char *url, bool use_api_key){
 
     //Setup request
