@@ -70,20 +70,35 @@ void retrieve_sets(){
         return;
     }
 
-    int n = cJSON_GetArraySize(root);
-    printf("JSON array size: %d\n", n);
+    //int n = cJSON_GetArraySize(root);
     cJSON *data = NULL;
-    cJSON *data2 = NULL;
-
     data = cJSON_GetObjectItem(root, "data");
     int set_count = cJSON_GetArraySize(data);
-    printf("set count in JSON: %d\n", set_count);
+    //printf("set count in JSON: %d\n", set_count);
 
+    //Loop through the data, one set at a time
+    cJSON *elem = NULL;
+    cJSON *id = NULL;
+    cJSON *name = NULL;
+    cJSON *ncards = NULL; //number of cards
+    for(int i = 0; i < set_count; i++){
+        elem = cJSON_GetArrayItem(data, i);
+        id = cJSON_GetObjectItem(elem, "id");
+        name = cJSON_GetObjectItem(elem, "name");
+        ncards = cJSON_GetObjectItem(elem, "printedTotal");
+        printf("Set info: %s | %s | %d\n", id->valuestring, name->valuestring, ncards->valueint);
+    }
+
+    
+    cJSON_Delete(root);
     free(result.buffer);
 
 }
 
 
+//Send GET request to the provided url
+//returns the data given from the request in a buffer
+//this buffer must be free'd by the user  
 get_request send_get_request(char *url, bool use_api_key){
 
     //Setup request
