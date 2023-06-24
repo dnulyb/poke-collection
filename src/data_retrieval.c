@@ -201,6 +201,31 @@ void retrieve_set_cards(char *set_id){
 
 }
 
+/*
+    Marks the card matching (set_id, number) as owned or not owned
+*/
+void set_card_owned(char *set_id, char *number, bool owned){
+
+    sqlite3 *db = db_open();
+    char *query; 
+
+
+    if(db != NULL){
+
+        if(owned){
+            query = sqlite3_mprintf(card_owned, set_id, number);
+        }else{
+            query = sqlite3_mprintf(card_not_owned, set_id, number);
+        }
+        db_exec(db, query);
+
+    }
+
+    db_close(db);
+
+
+}
+
 
 
 /* 

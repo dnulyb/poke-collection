@@ -14,15 +14,20 @@ int main(int argc, char *argv[]) {
     }*/
 
     //perform_command(argc, argv);
+    
+    int setup_test = 0;
+    if(setup_test > 0){
+        db_setup();
+        retrieve_sets();
+        retrieve_set_cards("swsh1");
 
-    db_setup();
-    retrieve_sets();
-    retrieve_set_cards("swsh1");
-    /*
-    ll_node *head = get_db_sets();
-    list_print(head);
-    list_delete(head);
-    */
+        ll_node *head = get_db_sets();
+        list_print(head);
+        list_delete(head);
+    }
+
+    set_card_owned("swsh1", "6", true);
+    //set_card_owned("swsh1", "6", false);
 
 }
 

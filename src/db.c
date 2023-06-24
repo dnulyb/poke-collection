@@ -25,7 +25,10 @@ static const char *create_cards = "CREATE TABLE Cards(" \
                                 "FOREIGN KEY(SetID) REFERENCES Sets(ID));";
 
 const char *insert_cards = "INSERT INTO Cards VALUES (%Q,%Q,%Q,%d,'%.2f');";
-const char *card_owned = "UPDATE Cards SET Collected = 1 WHERE";
+const char *card_owned = "UPDATE Cards SET Collected = 1 " \
+                            "WHERE SetId = %Q AND Number = %Q";
+const char *card_not_owned = "UPDATE Cards SET Collected = 0 " \
+                            "WHERE SetId = %Q AND Number = %Q";
 
 int sets_callback(void *list, int ncols, char **data, char **cols){
 

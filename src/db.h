@@ -7,6 +7,8 @@
 extern const char *insert_sets;
 extern const char *select_set_ids;
 extern const char *insert_cards;
+extern const char *card_owned;
+extern const char *card_not_owned;
 
 int sets_callback(void *list, int ncols, char **data, char **cols);
 
