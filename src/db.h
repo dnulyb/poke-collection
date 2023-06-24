@@ -4,6 +4,8 @@
 #include <sqlite3.h>
 
 extern const char *insert_sets;
+extern const char *select_set_ids;
+extern const char *insert_cards;
 
 
 sqlite3* db_open();

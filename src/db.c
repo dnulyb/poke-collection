@@ -4,9 +4,22 @@
 static const char *create_sets = "CREATE TABLE Sets(" \
                                 "Id TEXT PRIMARY KEY," \
                                 "Name TEXT," \
-                                "NCards INTEGER);";
+                                "NCardsPrinted INTEGER,"
+                                "NCardsTotal INTEGER);";
 
-const char *insert_sets = "INSERT INTO Sets VALUES(%Q,%Q,'%d');";
+const char *insert_sets = "INSERT INTO Sets VALUES(%Q,%Q,'%d','%d');";
+const char *select_set_ids = "SELECT Id FROM Sets";
+
+
+
+static const char *create_cards = "CREATE TABLE Cards(" \
+                                "Id TEXT PRIMARY KEY," \
+                                "Name TEXT," \
+                                "Number TEXT," \
+                                "Collected BOOL," \
+                                "Price REAL);";
+
+const char *insert_cards = "INSERT INTO Cards VALUES (%Q,%Q,%Q,%d,'%.2f');";
 
 
 
@@ -39,11 +52,19 @@ void db_setup(){
     int rc;
     char *err_msg = NULL;
 
-    //Create tables
+    //Create Sets table
     rc = sqlite3_exec(db, create_sets, 0, 0, &err_msg);
 
     if(rc){
-        fprintf(stderr, "Failed sqlite3_exec in db_setup: %s\n", sqlite3_errmsg(db));
+        fprintf(stderr, "Failed create_sets in db_setup: %s\n", sqlite3_errmsg(db));
+        sqlite3_free(err_msg);        
+    }
+
+    //Create Cards table
+    rc = sqlite3_exec(db, create_cards, 0, 0, &err_msg);
+
+    if(rc){
+        fprintf(stderr, "Failed create_cards in db_setup: %s\n", sqlite3_errmsg(db));
         sqlite3_free(err_msg);        
     }
 

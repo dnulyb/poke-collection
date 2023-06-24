@@ -16,6 +16,7 @@ int main(int argc, char *argv[]) {
 
     db_setup();
     retrieve_sets();
+    retrieve_set_cards("swsh1");
 
 
 }

@@ -8,8 +8,9 @@
 
 // Filepaths and urls
 static char *key_location = "../keys.txt"; //location of file containing pokemontcg api key
-static char *sets_url = "https://api.pokemontcg.io/v2/sets?select=id,name,printedTotal&orderBy=releaseDate";
-
+static char *sets_url = "https://api.pokemontcg.io/v2/sets?select=id,name,printedTotal,total&orderBy=releaseDate";
+//Append the set id to set_cards_url to get all cards for that set
+static char *set_cards_url = "https://api.pokemontcg.io/v2/cards?select=id,name,number,cardmarket&q=set.id:"; 
 
 
 
@@ -69,21 +70,19 @@ void retrieve_sets(){
     //printf("set count in JSON: %d\n", set_count);
 
 
-
-
-
     // Store data in sqlite database
     sqlite3 *db = db_open();
     if(db != NULL){
 
-        //Transaction to avoid doing many inserts
+        //Transaction to speedup doing many inserts
         db_exec(db, "BEGIN TRANSACTION;");
 
         //Insert the data, one set at a time
         cJSON *elem = NULL;
         char *id;
         char *name;
-        int ncards; //number of cards printed in the set
+        int ncards_printed; //set size printed on the cards
+        int ncards_total; //total number of cards printed in the set
         char *query;
         for(int i = 0; i < set_count; i++){
 
@@ -91,11 +90,83 @@ void retrieve_sets(){
             elem = cJSON_GetArrayItem(data, i);
             id = cJSON_GetObjectItem(elem, "id")->valuestring;
             name = cJSON_GetObjectItem(elem, "name")->valuestring;
-            ncards = cJSON_GetObjectItem(elem, "printedTotal")->valueint;
+            ncards_printed = cJSON_GetObjectItem(elem, "printedTotal")->valueint;
+            ncards_total = cJSON_GetObjectItem(elem, "total")->valueint;
             //printf("Set info: %s | %s | %d\n", id, name, ncards);
             
             //Build query and send to db
-            query = sqlite3_mprintf(insert_sets, id, name, ncards);
+            query = sqlite3_mprintf(insert_sets, id, name, ncards_printed, ncards_total);
+            db_exec(db, query);
+            
+            sqlite3_free(query);
+
+        }
+
+        db_exec(db, "END TRANSACTION;");
+        db_close(db);
+    }
+
+    
+    //Cleanup
+    cJSON_Delete(root);
+    free(result.buffer);
+
+}
+
+void retrieve_set_cards(char *set_id){
+
+    //Build the complete url
+    char set_cards_url_complete[128];
+    strcpy(set_cards_url_complete, set_cards_url);
+    strcat(set_cards_url_complete, set_id);
+
+    //Get all sets as JSON from the url
+    get_request result = send_get_request(set_cards_url_complete, true);
+    //printf("Received data in retrieve_sets: \n%s\n", result.buffer);
+    cJSON *root = cJSON_Parse(result.buffer);
+
+    if(root == NULL){
+        fprintf(stderr, "cJSON parsing failed: Invalid JSON.\n");
+        return;
+    }
+
+    //int n = cJSON_GetArraySize(root);
+    cJSON *data = NULL;
+    data = cJSON_GetObjectItem(root, "data");
+    int card_count = cJSON_GetArraySize(data);
+    //printf("set count in JSON: %d\n", set_count);
+
+
+    // Store data in sqlite database
+    sqlite3 *db = db_open();
+    if(db != NULL){
+
+        //Transaction to speedup doing many inserts
+        db_exec(db, "BEGIN TRANSACTION;");
+
+        //Insert the data, one set at a time
+        cJSON *elem = NULL;
+        char *id;
+        char *name;
+        char *number; 
+        cJSON *cardmarket;
+        cJSON *prices;
+        double avg_price;
+        char *query;
+        for(int i = 0; i < card_count; i++){
+
+            //Retrieve relevant data
+            elem = cJSON_GetArrayItem(data, i);
+            id = cJSON_GetObjectItem(elem, "id")->valuestring;
+            name = cJSON_GetObjectItem(elem, "name")->valuestring;
+            number = cJSON_GetObjectItem(elem, "number")->valuestring;
+            cardmarket = cJSON_GetObjectItem(elem, "cardmarket");
+            prices = cJSON_GetObjectItem(cardmarket, "prices");
+            avg_price = cJSON_GetObjectItem(prices, "avg30")->valuedouble;
+            //printf("Card info: %s | %s | %s | 0 | %.2f\n", id, name, number, trend_price);
+            
+            //Build query and send to db
+            query = sqlite3_mprintf(insert_cards, id, name, number, 0, avg_price);
             db_exec(db, query);
             
             sqlite3_free(query);
@@ -146,16 +217,24 @@ get_request send_get_request(char *url, bool use_api_key){
 
             // Get the API key as string 
             char *key = get_api_key();
+            if(key == NULL){
+                //Failed to get api key
+                fprintf(stderr, "Failed to get api key from file, " \
+                                    "proceeding without api key.\n");
+            }else{
 
-            // Construct the complete header string
-            char header[128];
-            strcpy(header, "X-Api-Key: ");
-            strcat(header, key);
+                // Construct the complete header string
+                char header[128];
+                strcpy(header, "X-Api-Key: ");
+                strcat(header, key);
 
-            free(key);
+                free(key);
 
-            //Add the custom api header
-            headers = curl_slist_append(headers, header);
+                //Add the custom api header
+                headers = curl_slist_append(headers, header);
+            }
+
+            
         }
 
         
@@ -182,7 +261,7 @@ get_request send_get_request(char *url, bool use_api_key){
         // The received data is now stored in req.buffer
 
         //printf("curl request result: %u\n", res);
-        printf("Total received bytes: %zu\n", req.len);
+        printf("send_get_request received this many bytes: %zu\n", req.len);
         //printf("Received data: \n%s\n", req.buffer);
 
         // Clean up
@@ -204,12 +283,12 @@ char* get_api_key(){
     fp = fopen(key_location, "r");
     if(fp == NULL){
         fprintf(stderr, "fopen: Error opening file containing API key\n");
-        //return
+        return NULL;
     }
 
     if((fgets(key, 128, fp)) == NULL) {
         fprintf(stderr, "fgets: Error reading API key\n");
-        //return;
+        return NULL;
     }
 
     //printf("length of string: %ld\n", strlen(buffer));
