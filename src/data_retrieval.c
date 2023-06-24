@@ -5,12 +5,17 @@
 #include <cjson/cJSON.h>
 #include "data_retrieval.h"
 #include "db.h"
+#include "linked_list.h"
 
 // Filepaths and urls
 static char *key_location = "../keys.txt"; //location of file containing pokemontcg api key
 static char *sets_url = "https://api.pokemontcg.io/v2/sets?select=id,name,printedTotal,total&orderBy=releaseDate";
 //Append the set id to set_cards_url to get all cards for that set
 static char *set_cards_url = "https://api.pokemontcg.io/v2/cards?select=id,name,number,cardmarket&q=set.id:"; 
+
+
+
+
 
 
 
@@ -113,6 +118,25 @@ void retrieve_sets(){
 
 }
 
+void get_db_sets(){
+
+    sqlite3 *db = db_open();
+    ll_node *head = list_create();
+
+    if(db != NULL){
+
+        db_exec_select_callback(db, select_set_ids, head);
+
+    }
+    db_close(db);
+
+    printf("got sets from db:\n");
+    list_print(head);
+
+    list_delete(head);
+
+}
+
 void retrieve_set_cards(char *set_id){
 
     //Build the complete url
@@ -183,6 +207,7 @@ void retrieve_set_cards(char *set_id){
     free(result.buffer);
 
 }
+
 
 
 /* 

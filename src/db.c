@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
 #include "db.h"
 
 static const char *create_sets = "CREATE TABLE Sets(" \
@@ -20,6 +22,22 @@ static const char *create_cards = "CREATE TABLE Cards(" \
                                 "Price REAL);";
 
 const char *insert_cards = "INSERT INTO Cards VALUES (%Q,%Q,%Q,%d,'%.2f');";
+
+
+int select_callback(void *list, int ncols, char **data, char **cols){
+
+    ll_node *head = list;
+
+    char *buffer = malloc(sizeof(char) * 32);
+    strcpy(buffer, data[0]);
+
+
+    list_add(head, buffer);
+
+    return 0;
+    
+}
+
 
 
 
@@ -69,10 +87,10 @@ void db_setup(){
     }
 
     db_close(db);
-
 }
 
-void db_exec(sqlite3 *db, char *query){
+//Does not open or close the db
+void db_exec(sqlite3 *db, const char *query){
 
     int rc;
     char *err_msg = NULL;
@@ -83,6 +101,24 @@ void db_exec(sqlite3 *db, char *query){
 
     if(rc){
         fprintf(stderr, "Failed sqlite3_exec in db_exec: %s\n", sqlite3_errmsg(db));
+        sqlite3_free(err_msg);        
+    }
+
+}
+
+//Does not open or close the db
+//Will get data from db and add to provided linked list
+void db_exec_select_callback(sqlite3 *db, const char *query, ll_node *head){
+
+    int rc;
+    char *err_msg = NULL;
+
+    rc = sqlite3_exec(db, query, select_callback, head, &err_msg);
+
+    //printf("db_exec trying to exec the following query: %s\n", query);
+
+    if(rc){
+        fprintf(stderr, "Failed sqlite3_exec in db_exec_callback: %s\n", sqlite3_errmsg(db));
         sqlite3_free(err_msg);        
     }
 

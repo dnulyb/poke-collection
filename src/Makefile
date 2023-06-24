@@ -3,8 +3,8 @@ CC = gcc
 CFLAGS = -g -std=c11 -Wall
 LFLAGS = -lsqlite3 -lcurl -lcjson
 
-HEADERS = commands.h db.h data_retrieval.h
-OBJECTS = main.o commands.o db.o data_retrieval.o
+HEADERS = commands.h db.h data_retrieval.h linked_list.h
+OBJECTS = main.o commands.o db.o data_retrieval.o linked_list.o
 
 default: $(TARGET)
 all: default
