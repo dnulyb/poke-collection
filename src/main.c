@@ -2,6 +2,7 @@
 #include "commands.h"
 #include "data_retrieval.h"
 #include "db.h"
+#include "linked_list.h"
 
 
 int main(int argc, char *argv[]) {
@@ -17,8 +18,11 @@ int main(int argc, char *argv[]) {
     db_setup();
     retrieve_sets();
     retrieve_set_cards("swsh1");
-    get_db_sets();
-
+    /*
+    ll_node *head = get_db_sets();
+    list_print(head);
+    list_delete(head);
+    */
 
 }
 

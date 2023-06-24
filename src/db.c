@@ -4,33 +4,35 @@
 #include "db.h"
 
 static const char *create_sets = "CREATE TABLE Sets(" \
-                                "Id TEXT PRIMARY KEY," \
+                                "ID TEXT NOT NULL PRIMARY KEY," \
                                 "Name TEXT," \
-                                "NCardsPrinted INTEGER,"
-                                "NCardsTotal INTEGER);";
+                                "NCardsPrinted INTEGER," \
+                                "NCardsTotal INTEGER," \
+                                "ReleaseDate TEXT);";
 
-const char *insert_sets = "INSERT INTO Sets VALUES(%Q,%Q,'%d','%d');";
-const char *select_set_ids = "SELECT Id FROM Sets";
+const char *insert_sets = "INSERT INTO Sets VALUES(%Q,%Q,'%d','%d',%Q);";
+const char *select_set_ids = "SELECT ID FROM Sets ORDER BY ReleaseDate ASC";
 
 
 
 static const char *create_cards = "CREATE TABLE Cards(" \
-                                "Id TEXT PRIMARY KEY," \
+                                "SetID TEXT NOT NULL," \
+                                "Number TEXT NOT NULL," \
                                 "Name TEXT," \
-                                "Number TEXT," \
                                 "Collected BOOL," \
-                                "Price REAL);";
+                                "Price REAL," \
+                                "PRIMARY KEY (SetID, Number)," \
+                                "FOREIGN KEY(SetID) REFERENCES Sets(ID));";
 
 const char *insert_cards = "INSERT INTO Cards VALUES (%Q,%Q,%Q,%d,'%.2f');";
+const char *card_owned = "UPDATE Cards SET Collected = 1 WHERE";
 
-
-int select_callback(void *list, int ncols, char **data, char **cols){
+int sets_callback(void *list, int ncols, char **data, char **cols){
 
     ll_node *head = list;
 
     char *buffer = malloc(sizeof(char) * 32);
     strcpy(buffer, data[0]);
-
 
     list_add(head, buffer);
 
@@ -108,12 +110,12 @@ void db_exec(sqlite3 *db, const char *query){
 
 //Does not open or close the db
 //Will get data from db and add to provided linked list
-void db_exec_select_callback(sqlite3 *db, const char *query, ll_node *head){
+void db_exec_callback(sqlite3 *db, const char *query, ll_node *head){
 
     int rc;
     char *err_msg = NULL;
 
-    rc = sqlite3_exec(db, query, select_callback, head, &err_msg);
+    rc = sqlite3_exec(db, query, sets_callback, head, &err_msg);
 
     //printf("db_exec trying to exec the following query: %s\n", query);
 

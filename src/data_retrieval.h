@@ -2,7 +2,7 @@
 #define DATA_RETRIEVAL_H
 
 #include <stdbool.h>
-
+#include "linked_list.h"
 
 //curl custom buffer
 typedef struct {
@@ -13,7 +13,7 @@ typedef struct {
 
 
 void retrieve_sets();
-void get_db_sets();
+ll_node* get_db_sets();
 void retrieve_set_cards(char *set_id);
 get_request send_get_request(char *url, bool use_api_key);
 char* get_api_key();

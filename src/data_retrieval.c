@@ -5,18 +5,12 @@
 #include <cjson/cJSON.h>
 #include "data_retrieval.h"
 #include "db.h"
-#include "linked_list.h"
 
 // Filepaths and urls
 static char *key_location = "../keys.txt"; //location of file containing pokemontcg api key
-static char *sets_url = "https://api.pokemontcg.io/v2/sets?select=id,name,printedTotal,total&orderBy=releaseDate";
+static char *sets_url = "https://api.pokemontcg.io/v2/sets?select=id,name,printedTotal,total,releaseDate&orderBy=releaseDate";
 //Append the set id to set_cards_url to get all cards for that set
-static char *set_cards_url = "https://api.pokemontcg.io/v2/cards?select=id,name,number,cardmarket&q=set.id:"; 
-
-
-
-
-
+static char *set_cards_url = "https://api.pokemontcg.io/v2/cards?select=number,name,cardmarket&q=set.id:"; 
 
 
 #define CHUNK_SIZE 2048
@@ -88,6 +82,7 @@ void retrieve_sets(){
         char *name;
         int ncards_printed; //set size printed on the cards
         int ncards_total; //total number of cards printed in the set
+        char *release_date;
         char *query;
         for(int i = 0; i < set_count; i++){
 
@@ -97,10 +92,11 @@ void retrieve_sets(){
             name = cJSON_GetObjectItem(elem, "name")->valuestring;
             ncards_printed = cJSON_GetObjectItem(elem, "printedTotal")->valueint;
             ncards_total = cJSON_GetObjectItem(elem, "total")->valueint;
+            release_date = cJSON_GetObjectItem(elem, "releaseDate")->valuestring;
             //printf("Set info: %s | %s | %d\n", id, name, ncards);
             
             //Build query and send to db
-            query = sqlite3_mprintf(insert_sets, id, name, ncards_printed, ncards_total);
+            query = sqlite3_mprintf(insert_sets, id, name, ncards_printed, ncards_total, release_date);
             db_exec(db, query);
             
             sqlite3_free(query);
@@ -118,22 +114,21 @@ void retrieve_sets(){
 
 }
 
-void get_db_sets(){
+//Caller is responsible for freeing list memory
+//  with list_delete
+ll_node* get_db_sets(){
 
     sqlite3 *db = db_open();
     ll_node *head = list_create();
 
     if(db != NULL){
 
-        db_exec_select_callback(db, select_set_ids, head);
-
+        db_exec_callback(db, select_set_ids, head);
     }
+
     db_close(db);
 
-    printf("got sets from db:\n");
-    list_print(head);
-
-    list_delete(head);
+    return head;
 
 }
 
@@ -170,9 +165,9 @@ void retrieve_set_cards(char *set_id){
 
         //Insert the data, one set at a time
         cJSON *elem = NULL;
-        char *id;
-        char *name;
+        //We already have the set id as parameter, so no need to fetch it from url
         char *number; 
+        char *name;
         cJSON *cardmarket;
         cJSON *prices;
         double avg_price;
@@ -181,16 +176,14 @@ void retrieve_set_cards(char *set_id){
 
             //Retrieve relevant data
             elem = cJSON_GetArrayItem(data, i);
-            id = cJSON_GetObjectItem(elem, "id")->valuestring;
-            name = cJSON_GetObjectItem(elem, "name")->valuestring;
             number = cJSON_GetObjectItem(elem, "number")->valuestring;
+            name = cJSON_GetObjectItem(elem, "name")->valuestring;
             cardmarket = cJSON_GetObjectItem(elem, "cardmarket");
             prices = cJSON_GetObjectItem(cardmarket, "prices");
             avg_price = cJSON_GetObjectItem(prices, "avg30")->valuedouble;
-            //printf("Card info: %s | %s | %s | 0 | %.2f\n", id, name, number, trend_price);
             
             //Build query and send to db
-            query = sqlite3_mprintf(insert_cards, id, name, number, 0, avg_price);
+            query = sqlite3_mprintf(insert_cards, set_id, number, name, 0, avg_price);
             db_exec(db, query);
             
             sqlite3_free(query);
