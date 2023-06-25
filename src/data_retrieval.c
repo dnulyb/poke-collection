@@ -204,26 +204,50 @@ void retrieve_set_cards(char *set_id){
 /*
     Marks the card matching (set_id, number) as owned or not owned
 */
-void set_card_owned(char *set_id, char *number, bool owned){
+int set_card_owned(char *set_id, char *number, bool owned){
+
+    printf("set_card_owned params: %s %s\n", set_id, number);
 
     sqlite3 *db = db_open();
     char *query; 
-
+    int res = 0;
 
     if(db != NULL){
+
 
         if(owned){
             query = sqlite3_mprintf(card_owned, set_id, number);
         }else{
             query = sqlite3_mprintf(card_not_owned, set_id, number);
         }
-        db_exec(db, query);
+        res = db_exec(db, query);
+        sqlite3_free(query);
+
 
     }
 
     db_close(db);
 
+    return res;
 
+}
+
+ll_node* check_card_exists(char *set_id, char *number){
+
+    sqlite3 *db = db_open();
+    ll_node *head = list_create();
+    char *query;
+
+    if(db != NULL){
+
+        query = sqlite3_mprintf(card_exists, set_id, number);
+        db_exec_exists_callback(db, query, head);
+        sqlite3_free(query);
+    }
+
+    db_close(db);
+
+    return head;
 }
 
 

@@ -8,12 +8,12 @@
 int main(int argc, char *argv[]) {
 
 
-    /*if(argc < 2){
+    if(argc < 2){
         printf("No command given, exiting...\n");
         return 0;
-    }*/
+    }
 
-    //perform_command(argc, argv);
+    perform_command(argc, argv);
     
     int setup_test = 0;
     if(setup_test > 0){
@@ -26,7 +26,7 @@ int main(int argc, char *argv[]) {
         list_delete(head);
     }
 
-    set_card_owned("swsh1", "6", true);
+    //set_card_owned("swsh1", "6", true);
     //set_card_owned("swsh1", "6", false);
 
 }

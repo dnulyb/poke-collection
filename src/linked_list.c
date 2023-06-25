@@ -5,12 +5,6 @@
 #include <stdio.h>
 #include "linked_list.h"
 
-typedef struct ll_node {
-
-    char *data;
-    ll_node *next;
-
-} ll_node;
 
 ll_node* list_create(){
     ll_node *head = malloc(sizeof(ll_node));

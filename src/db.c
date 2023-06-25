@@ -11,7 +11,7 @@ static const char *create_sets = "CREATE TABLE Sets(" \
                                 "ReleaseDate TEXT);";
 
 const char *insert_sets = "INSERT INTO Sets VALUES(%Q,%Q,'%d','%d',%Q);";
-const char *select_set_ids = "SELECT ID FROM Sets ORDER BY ReleaseDate ASC";
+const char *select_set_ids = "SELECT ID FROM Sets ORDER BY ReleaseDate ASC;";
 
 
 
@@ -26,9 +26,12 @@ static const char *create_cards = "CREATE TABLE Cards(" \
 
 const char *insert_cards = "INSERT INTO Cards VALUES (%Q,%Q,%Q,%d,'%.2f');";
 const char *card_owned = "UPDATE Cards SET Collected = 1 " \
-                            "WHERE SetId = %Q AND Number = %Q";
+                            "WHERE SetId = %Q AND Number = %Q;";
 const char *card_not_owned = "UPDATE Cards SET Collected = 0 " \
-                            "WHERE SetId = %Q AND Number = %Q";
+                            "WHERE SetId = %Q AND Number = %Q;";
+
+const char *card_exists = "SELECT EXISTS(SELECT 1 FROM Cards " \
+                            "WHERE SetId = %Q AND Number = %Q);";
 
 int sets_callback(void *list, int ncols, char **data, char **cols){
 
@@ -41,6 +44,19 @@ int sets_callback(void *list, int ncols, char **data, char **cols){
 
     return 0;
     
+}
+
+int exists_callback(void *list, int ncols, char **data, char **cols){
+
+    ll_node *head = list;
+
+    char *buffer = malloc(sizeof(char) * 32);
+    strcpy(buffer, data[0]);
+
+    list_add(head, buffer);
+
+    return 0;
+
 }
 
 
@@ -95,19 +111,22 @@ void db_setup(){
 }
 
 //Does not open or close the db
-void db_exec(sqlite3 *db, const char *query){
+int db_exec(sqlite3 *db, const char *query){
 
     int rc;
     char *err_msg = NULL;
 
     rc = sqlite3_exec(db, query, 0, 0, &err_msg);
 
-    //printf("db_exec trying to exec the following query: %s\n", query);
+    printf("db_exec trying to exec the following query: %s\n", query);
 
     if(rc){
         fprintf(stderr, "Failed sqlite3_exec in db_exec: %s\n", sqlite3_errmsg(db));
-        sqlite3_free(err_msg);        
+        sqlite3_free(err_msg); 
+        return -1;       
     }
+
+    return 0;
 
 }
 
@@ -124,6 +143,22 @@ void db_exec_callback(sqlite3 *db, const char *query, ll_node *head){
 
     if(rc){
         fprintf(stderr, "Failed sqlite3_exec in db_exec_callback: %s\n", sqlite3_errmsg(db));
+        sqlite3_free(err_msg);        
+    }
+
+}
+
+void db_exec_exists_callback(sqlite3 *db, const char *query, ll_node *head){
+
+    int rc;
+    char *err_msg = NULL;
+
+    rc = sqlite3_exec(db, query, exists_callback, head, &err_msg);
+
+    printf("db_exec trying to exec the following query: %s\n", query);
+
+    if(rc){
+        fprintf(stderr, "Failed sqlite3_exec in db_exec_exists_callback: %s\n", sqlite3_errmsg(db));
         sqlite3_free(err_msg);        
     }
 
