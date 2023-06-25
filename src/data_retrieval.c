@@ -3,6 +3,11 @@
             since the pokemontcg api page size is max 250.
             To fix, implement page 2 (and 3, 4, ... n) parsing if 
                 more than 250 cards.
+
+
+    Note: Price data is unreliable for cards with more than 1 version,
+            since the pokemontcg price data url is the wrong version for
+            many cards.
 */
 
 #include <stdio.h>
@@ -103,19 +108,19 @@ char* sets_query_from_json(cJSON *data, int i){
     }
 
     //Make sure ncards_printed exists
-    ncards_printed = cJSON_GetObjectItem(elem, "ncards_printed");
+    ncards_printed = cJSON_GetObjectItem(elem, "printedTotal");
     if(ncards_printed != NULL){
         ncards_printed_value = ncards_printed->valueint;
     }
 
     //Make sure ncards_total exists
-    ncards_total = cJSON_GetObjectItem(elem, "ncards_total");
+    ncards_total = cJSON_GetObjectItem(elem, "total");
     if(ncards_total != NULL){
         ncards_total_value = ncards_total->valueint;
     }
 
     //Make sure release_date exists
-    release_date = cJSON_GetObjectItem(elem, "release_date");
+    release_date = cJSON_GetObjectItem(elem, "releaseDate");
     if(release_date != NULL){
         release_date_value = release_date->valuestring;
     }
@@ -213,6 +218,10 @@ char* cards_query_from_json(cJSON *data, int i, char *set_id){
     char *number_value;
     cJSON *name = NULL;
     char *name_value;
+    //Cardmarket link from the retrieved json can be for the wrong
+    //  version of the card (very common with base set cards for example).
+    //  This means that the price data can be unreliable and should be double-checked
+    //      manually especially for (seemingly) valuable cards.
     cJSON *cardmarket = NULL;
     cJSON *prices = NULL;
     cJSON *avg_price = NULL;

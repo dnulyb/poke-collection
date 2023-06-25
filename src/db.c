@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include "db.h"
 
+static const char *db_name = "poke_collection.db";
+
 static const char *create_sets = "CREATE TABLE Sets(" \
                                 "ID TEXT NOT NULL PRIMARY KEY," \
                                 "Name TEXT," \
@@ -67,7 +69,7 @@ sqlite3* db_open(){
     sqlite3 *db;
     int rc;
 
-    rc = sqlite3_open("test.db", &db);
+    rc = sqlite3_open(db_name, &db);
 
     if(rc){
         fprintf(stderr, "Failed to open database: %s\n", sqlite3_errmsg(db));
