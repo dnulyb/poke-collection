@@ -118,7 +118,7 @@ int db_exec(sqlite3 *db, const char *query){
 
     rc = sqlite3_exec(db, query, 0, 0, &err_msg);
 
-    printf("db_exec trying to exec the following query: %s\n", query);
+    //printf("db_exec trying to exec the following query: %s\n", query);
 
     if(rc){
         fprintf(stderr, "Failed sqlite3_exec in db_exec: %s\n", sqlite3_errmsg(db));
@@ -132,30 +132,16 @@ int db_exec(sqlite3 *db, const char *query){
 
 //Does not open or close the db
 //Will get data from db and add to provided linked list
-void db_exec_callback(sqlite3 *db, const char *query, ll_node *head){
+void db_exec_callback(sqlite3 *db, const char *query, 
+                                int (*cb)(void *, int,  char **, char **), 
+                                ll_node *head){
 
     int rc;
     char *err_msg = NULL;
 
-    rc = sqlite3_exec(db, query, sets_callback, head, &err_msg);
+    rc = sqlite3_exec(db, query, cb, head, &err_msg);
 
-    //printf("db_exec trying to exec the following query: %s\n", query);
-
-    if(rc){
-        fprintf(stderr, "Failed sqlite3_exec in db_exec_callback: %s\n", sqlite3_errmsg(db));
-        sqlite3_free(err_msg);        
-    }
-
-}
-
-void db_exec_exists_callback(sqlite3 *db, const char *query, ll_node *head){
-
-    int rc;
-    char *err_msg = NULL;
-
-    rc = sqlite3_exec(db, query, exists_callback, head, &err_msg);
-
-    printf("db_exec trying to exec the following query: %s\n", query);
+    //printf("db_exec_callback trying to exec the following query: %s\n", query);
 
     if(rc){
         fprintf(stderr, "Failed sqlite3_exec in db_exec_exists_callback: %s\n", sqlite3_errmsg(db));

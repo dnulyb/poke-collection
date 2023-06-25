@@ -18,9 +18,9 @@ sqlite3* db_open();
 void db_close(sqlite3 *db);
 void db_setup();
 int db_exec(sqlite3 *db, const char *query);
-void db_exec_callback(sqlite3 *db, const char *query, ll_node *head);
-void db_exec_exists_callback(sqlite3 *db, const char *query, ll_node *head);
-
-
+void db_exec_callback(sqlite3 *db, const char *query, 
+                                int (*cb)(void *, int,  char **, char **), 
+                                ll_node *head);
+                                
 
 #endif

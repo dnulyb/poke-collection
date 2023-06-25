@@ -1,3 +1,10 @@
+/*
+    TODO: Currently cannot download sets of cards larger than 250 cards,
+            since the pokemontcg api page size is max 250.
+            To fix, implement page 2 (and 3, 4, ... n) parsing if 
+                more than 250 cards.
+*/
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -5,6 +12,10 @@
 #include <cjson/cJSON.h>
 #include "data_retrieval.h"
 #include "db.h"
+
+
+
+
 
 // Filepaths and urls
 static char *key_location = "../keys.txt"; //location of file containing pokemontcg api key
@@ -65,6 +76,12 @@ void retrieve_sets(){
     //int n = cJSON_GetArraySize(root);
     cJSON *data = NULL;
     data = cJSON_GetObjectItem(root, "data");
+    
+    if(data == NULL){
+        fprintf(stderr, "cJSON parsing failed for retrieve_sets: 'data' not found.\n");
+        return;
+    }
+    
     int set_count = cJSON_GetArraySize(data);
     //printf("set count in JSON: %d\n", set_count);
 
@@ -78,25 +95,63 @@ void retrieve_sets(){
 
         //Insert the data, one set at a time
         cJSON *elem = NULL;
-        char *id;
-        char *name;
-        int ncards_printed; //set size printed on the cards
-        int ncards_total; //total number of cards printed in the set
-        char *release_date;
+        cJSON *id = NULL;
+        char *id_value = NULL;
+        cJSON *name = NULL;
+        char *name_value = NULL;
+        cJSON *ncards_printed = NULL;
+        int ncards_printed_value = 0; //set size printed on the cards
+        cJSON *ncards_total = NULL;
+        int ncards_total_value = 0; //total number of cards printed in the set
+        cJSON *release_date = NULL;
+        char *release_date_value = NULL;
         char *query;
         for(int i = 0; i < set_count; i++){
 
             //Retrieve relevant data
             elem = cJSON_GetArrayItem(data, i);
-            id = cJSON_GetObjectItem(elem, "id")->valuestring;
-            name = cJSON_GetObjectItem(elem, "name")->valuestring;
-            ncards_printed = cJSON_GetObjectItem(elem, "printedTotal")->valueint;
-            ncards_total = cJSON_GetObjectItem(elem, "total")->valueint;
-            release_date = cJSON_GetObjectItem(elem, "releaseDate")->valuestring;
+            if(elem == NULL){
+                //Failed to get current card, so skip it
+                fprintf(stderr, "retrieve_sets failed to get set number %d\n", i);
+                continue;
+            }
+
+            //Make sure id exists
+            id = cJSON_GetObjectItem(elem, "id");
+            if(id != NULL){
+                id_value = id->valuestring;
+            }
+
+            //Make sure name exists
+            name = cJSON_GetObjectItem(elem, "name");
+            if(name != NULL){
+                name_value = name->valuestring;
+            }
+
+            //Make sure ncards_printed exists
+            ncards_printed = cJSON_GetObjectItem(elem, "ncards_printed");
+            if(ncards_printed != NULL){
+                ncards_printed_value = ncards_printed->valueint;
+            }
+
+            //Make sure ncards_total exists
+            ncards_total = cJSON_GetObjectItem(elem, "ncards_total");
+            if(ncards_total != NULL){
+                ncards_total_value = ncards_total->valueint;
+            }
+
+            //Make sure release_date exists
+            release_date = cJSON_GetObjectItem(elem, "release_date");
+            if(release_date != NULL){
+                release_date_value = release_date->valuestring;
+            }
+
             //printf("Set info: %s | %s | %d\n", id, name, ncards);
             
             //Build query and send to db
-            query = sqlite3_mprintf(insert_sets, id, name, ncards_printed, ncards_total, release_date);
+            query = sqlite3_mprintf(insert_sets, id_value, name_value,
+                                     ncards_printed_value, ncards_total_value,
+                                     release_date_value);
             db_exec(db, query);
             
             sqlite3_free(query);
@@ -123,7 +178,7 @@ ll_node* get_db_sets(){
 
     if(db != NULL){
 
-        db_exec_callback(db, select_set_ids, head);
+        db_exec_callback(db, select_set_ids, sets_callback, head);
     }
 
     db_close(db);
@@ -145,13 +200,19 @@ void retrieve_set_cards(char *set_id){
     cJSON *root = cJSON_Parse(result.buffer);
 
     if(root == NULL){
-        fprintf(stderr, "cJSON parsing failed: Invalid JSON.\n");
+        fprintf(stderr, "cJSON parsing failed for set %s: Invalid JSON.\n", set_id);
         return;
     }
 
     //int n = cJSON_GetArraySize(root);
     cJSON *data = NULL;
     data = cJSON_GetObjectItem(root, "data");
+
+    if(data == NULL){
+        fprintf(stderr, "cJSON parsing failed for set %s: 'data' not found.\n", set_id);
+        return;
+    }
+
     int card_count = cJSON_GetArraySize(data);
     //printf("set count in JSON: %d\n", set_count);
 
@@ -166,24 +227,52 @@ void retrieve_set_cards(char *set_id){
         //Insert the data, one set at a time
         cJSON *elem = NULL;
         //We already have the set id as parameter, so no need to fetch it from url
-        char *number; 
-        char *name;
-        cJSON *cardmarket;
-        cJSON *prices;
-        double avg_price;
+        cJSON *number = NULL; 
+        char *number_value = NULL;
+        cJSON *name = NULL;
+        char *name_value = NULL;
+        cJSON *cardmarket = NULL;
+        cJSON *prices = NULL;
+        cJSON *avg_price = NULL;
+        double avg_price_value = 0.0f;
         char *query;
         for(int i = 0; i < card_count; i++){
 
             //Retrieve relevant data
             elem = cJSON_GetArrayItem(data, i);
-            number = cJSON_GetObjectItem(elem, "number")->valuestring;
-            name = cJSON_GetObjectItem(elem, "name")->valuestring;
+            if(elem == NULL){
+                //Failed to get current card, so skip it
+                fprintf(stderr, "retrieve_sets failed to get card number %d for set %s\n", i, set_id);
+                continue;
+            }
+
+            //Make sure number exists
+            number = cJSON_GetObjectItem(elem, "number");
+            if(number != NULL){
+                number_value = number->valuestring;
+            }
+
+            //Make sure name exists
+            name = cJSON_GetObjectItem(elem, "name");
+            if(name != NULL){
+                name_value = name->valuestring;
+            }
+
+            //Make sure avg_price exists
             cardmarket = cJSON_GetObjectItem(elem, "cardmarket");
-            prices = cJSON_GetObjectItem(cardmarket, "prices");
-            avg_price = cJSON_GetObjectItem(prices, "avg30")->valuedouble;
+            if(cardmarket != NULL){
+                prices = cJSON_GetObjectItem(cardmarket, "prices");
+                if(prices != NULL){
+                    avg_price = cJSON_GetObjectItem(prices, "avg30");
+                    if(avg_price != NULL){
+                        avg_price_value = avg_price->valuedouble;
+                    }
+                }
+            }
             
             //Build query and send to db
-            query = sqlite3_mprintf(insert_cards, set_id, number, name, 0, avg_price);
+            query = sqlite3_mprintf(insert_cards, set_id, number_value,
+                                     name_value, 0, avg_price_value);
             db_exec(db, query);
             
             sqlite3_free(query);
@@ -203,10 +292,12 @@ void retrieve_set_cards(char *set_id){
 
 /*
     Marks the card matching (set_id, number) as owned or not owned
+
+    Example: 
+        set_card_owned("swsh1", "6", true);
+        set_card_owned("swsh1", "6", false);
 */
 int set_card_owned(char *set_id, char *number, bool owned){
-
-    printf("set_card_owned params: %s %s\n", set_id, number);
 
     sqlite3 *db = db_open();
     char *query; 
@@ -232,7 +323,8 @@ int set_card_owned(char *set_id, char *number, bool owned){
 
 }
 
-ll_node* check_card_exists(char *set_id, char *number){
+//Return: 0 if card exists, else -1 
+int check_card_exists(char *set_id, char *number){
 
     sqlite3 *db = db_open();
     ll_node *head = list_create();
@@ -241,13 +333,20 @@ ll_node* check_card_exists(char *set_id, char *number){
     if(db != NULL){
 
         query = sqlite3_mprintf(card_exists, set_id, number);
-        db_exec_exists_callback(db, query, head);
+        db_exec_callback(db, query, exists_callback, head);
         sqlite3_free(query);
     }
 
     db_close(db);
 
-    return head;
+    if(head->data != NULL){
+        if(strcmp("1", head->data) == 0){
+            //Card exists
+            return 0;
+        }
+    }
+
+    return -1;
 }
 
 
