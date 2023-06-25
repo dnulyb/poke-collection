@@ -60,30 +60,104 @@ size_t write_callback(char *ptr, size_t size, size_t nmemb, void *userdata)
     return realsize;
 }
 
+char* sets_query_from_json(cJSON *data, int i){
+
+    cJSON *elem = NULL;
+    cJSON *id = NULL;
+    char *id_value;
+    cJSON *name = NULL;
+    char *name_value;
+    cJSON *ncards_printed = NULL;
+    int ncards_printed_value;
+    cJSON *ncards_total = NULL;
+    int ncards_total_value;
+    cJSON *release_date = NULL;
+    char *release_date_value;
+    char *query;
+
+    //reset variables
+    id_value = NULL;
+    name_value = NULL;
+    ncards_printed_value = 0; //set size printed on the cards
+    ncards_total_value = 0; //total number of cards printed in the set
+    release_date_value = NULL;
+
+    //Retrieve relevant data
+    elem = cJSON_GetArrayItem(data, i);
+    if(elem == NULL){
+        //Failed to get current card, so skip it
+        fprintf(stderr, "retrieve_sets failed to get set number %d\n", i);
+        return NULL;
+    }
+
+    //Make sure id exists
+    id = cJSON_GetObjectItem(elem, "id");
+    if(id != NULL){
+        id_value = id->valuestring;
+    }
+
+    //Make sure name exists
+    name = cJSON_GetObjectItem(elem, "name");
+    if(name != NULL){
+        name_value = name->valuestring;
+    }
+
+    //Make sure ncards_printed exists
+    ncards_printed = cJSON_GetObjectItem(elem, "ncards_printed");
+    if(ncards_printed != NULL){
+        ncards_printed_value = ncards_printed->valueint;
+    }
+
+    //Make sure ncards_total exists
+    ncards_total = cJSON_GetObjectItem(elem, "ncards_total");
+    if(ncards_total != NULL){
+        ncards_total_value = ncards_total->valueint;
+    }
+
+    //Make sure release_date exists
+    release_date = cJSON_GetObjectItem(elem, "release_date");
+    if(release_date != NULL){
+        release_date_value = release_date->valuestring;
+    }
+
+    //printf("Set info: %s | %s | %d\n", id, name, ncards);
+    
+    //Build query and send to db
+    query = sqlite3_mprintf(insert_sets, id_value, name_value,
+                                ncards_printed_value, ncards_total_value,
+                                release_date_value);
+
+    return query;
+
+}
 
 void retrieve_sets(){
 
     //Get all sets as JSON from the url
     get_request result = send_get_request(sets_url, true);
-    //printf("Received data in retrieve_sets: \n%s\n", result.buffer);
     cJSON *root = cJSON_Parse(result.buffer);
 
     if(root == NULL){
         fprintf(stderr, "cJSON parsing failed: Invalid JSON.\n");
+        //Cleanup
+        cJSON_Delete(root);
+        free(result.buffer);
         return;
     }
 
-    //int n = cJSON_GetArraySize(root);
+    //Find data object
     cJSON *data = NULL;
     data = cJSON_GetObjectItem(root, "data");
     
     if(data == NULL){
         fprintf(stderr, "cJSON parsing failed for retrieve_sets: 'data' not found.\n");
+        //Cleanup
+        cJSON_Delete(root);
+        free(result.buffer);
         return;
     }
     
     int set_count = cJSON_GetArraySize(data);
-    //printf("set count in JSON: %d\n", set_count);
 
 
     // Store data in sqlite database
@@ -93,74 +167,11 @@ void retrieve_sets(){
         //Transaction to speedup doing many inserts
         db_exec(db, "BEGIN TRANSACTION;");
 
-        //Insert the data, one set at a time
-        cJSON *elem = NULL;
-        cJSON *id = NULL;
-        char *id_value;
-        cJSON *name = NULL;
-        char *name_value;
-        cJSON *ncards_printed = NULL;
-        int ncards_printed_value;
-        cJSON *ncards_total = NULL;
-        int ncards_total_value;
-        cJSON *release_date = NULL;
-        char *release_date_value;
-        char *query;
+        //Loop through and store each set
         for(int i = 0; i < set_count; i++){
-
-            //reset variables
-            id_value = NULL;
-            name_value = NULL;
-            ncards_printed_value = 0; //set size printed on the cards
-            ncards_total_value = 0; //total number of cards printed in the set
-            release_date_value = NULL;
-
-            //Retrieve relevant data
-            elem = cJSON_GetArrayItem(data, i);
-            if(elem == NULL){
-                //Failed to get current card, so skip it
-                fprintf(stderr, "retrieve_sets failed to get set number %d\n", i);
-                continue;
-            }
-
-            //Make sure id exists
-            id = cJSON_GetObjectItem(elem, "id");
-            if(id != NULL){
-                id_value = id->valuestring;
-            }
-
-            //Make sure name exists
-            name = cJSON_GetObjectItem(elem, "name");
-            if(name != NULL){
-                name_value = name->valuestring;
-            }
-
-            //Make sure ncards_printed exists
-            ncards_printed = cJSON_GetObjectItem(elem, "ncards_printed");
-            if(ncards_printed != NULL){
-                ncards_printed_value = ncards_printed->valueint;
-            }
-
-            //Make sure ncards_total exists
-            ncards_total = cJSON_GetObjectItem(elem, "ncards_total");
-            if(ncards_total != NULL){
-                ncards_total_value = ncards_total->valueint;
-            }
-
-            //Make sure release_date exists
-            release_date = cJSON_GetObjectItem(elem, "release_date");
-            if(release_date != NULL){
-                release_date_value = release_date->valuestring;
-            }
-
-            //printf("Set info: %s | %s | %d\n", id, name, ncards);
-            
-            //Build query and send to db
-            query = sqlite3_mprintf(insert_sets, id_value, name_value,
-                                     ncards_printed_value, ncards_total_value,
-                                     release_date_value);
+        
+            char *query = sets_query_from_json(data, i);
             db_exec(db, query);
-            
             sqlite3_free(query);
 
         }
@@ -194,6 +205,65 @@ ll_node* get_db_sets(){
 
 }
 
+char* cards_query_from_json(cJSON *data, int i, char *set_id){
+
+    cJSON *elem = NULL;
+    //We already have the set id as parameter, so no need to fetch it from url
+    cJSON *number = NULL; 
+    char *number_value;
+    cJSON *name = NULL;
+    char *name_value;
+    cJSON *cardmarket = NULL;
+    cJSON *prices = NULL;
+    cJSON *avg_price = NULL;
+    double avg_price_value;
+    char *query;
+
+    //reset variables
+    number_value = NULL;
+    name_value = NULL;
+    avg_price_value = 0.0f;
+
+    //Retrieve relevant data
+    elem = cJSON_GetArrayItem(data, i);
+    if(elem == NULL){
+        //Failed to get current card, so skip it
+        fprintf(stderr, "retrieve_sets failed to get card number %d for set %s\n", i, set_id);
+        return NULL;
+    }
+
+    //Make sure number exists
+    number = cJSON_GetObjectItem(elem, "number");
+    if(number != NULL){
+        number_value = number->valuestring;
+    }
+
+    //Make sure name exists
+    name = cJSON_GetObjectItem(elem, "name");
+    if(name != NULL){
+        name_value = name->valuestring;
+    }
+
+    //Make sure avg_price exists
+    cardmarket = cJSON_GetObjectItem(elem, "cardmarket");
+    if(cardmarket != NULL){
+        prices = cJSON_GetObjectItem(cardmarket, "prices");
+        if(prices != NULL){
+            avg_price = cJSON_GetObjectItem(prices, "avg30");
+            if(avg_price != NULL){
+                avg_price_value = avg_price->valuedouble;
+            }
+        }
+    }
+    
+    //Build query and send to db
+    query = sqlite3_mprintf(insert_cards, set_id, number_value,
+                                name_value, 0, avg_price_value);
+
+    return query;
+
+}
+
 void retrieve_set_cards(char *set_id){
 
     //Build the complete url
@@ -208,6 +278,9 @@ void retrieve_set_cards(char *set_id){
 
     if(root == NULL){
         fprintf(stderr, "cJSON parsing failed for set %s: Invalid JSON.\n", set_id);
+        //Cleanup
+        cJSON_Delete(root);
+        free(result.buffer);
         return;
     }
 
@@ -217,6 +290,9 @@ void retrieve_set_cards(char *set_id){
 
     if(data == NULL){
         fprintf(stderr, "cJSON parsing failed for set %s: 'data' not found.\n", set_id);
+        //Cleanup
+        cJSON_Delete(root);
+        free(result.buffer);
         return;
     }
 
@@ -232,61 +308,10 @@ void retrieve_set_cards(char *set_id){
         db_exec(db, "BEGIN TRANSACTION;");
 
         //Insert the data, one set at a time
-        cJSON *elem = NULL;
-        //We already have the set id as parameter, so no need to fetch it from url
-        cJSON *number = NULL; 
-        char *number_value;
-        cJSON *name = NULL;
-        char *name_value;
-        cJSON *cardmarket = NULL;
-        cJSON *prices = NULL;
-        cJSON *avg_price = NULL;
-        double avg_price_value;
-        char *query;
         for(int i = 0; i < card_count; i++){
 
-            //reset variables
-            number_value = NULL;
-            name_value = NULL;
-            avg_price_value = 0.0f;
-
-            //Retrieve relevant data
-            elem = cJSON_GetArrayItem(data, i);
-            if(elem == NULL){
-                //Failed to get current card, so skip it
-                fprintf(stderr, "retrieve_sets failed to get card number %d for set %s\n", i, set_id);
-                continue;
-            }
-
-            //Make sure number exists
-            number = cJSON_GetObjectItem(elem, "number");
-            if(number != NULL){
-                number_value = number->valuestring;
-            }
-
-            //Make sure name exists
-            name = cJSON_GetObjectItem(elem, "name");
-            if(name != NULL){
-                name_value = name->valuestring;
-            }
-
-            //Make sure avg_price exists
-            cardmarket = cJSON_GetObjectItem(elem, "cardmarket");
-            if(cardmarket != NULL){
-                prices = cJSON_GetObjectItem(cardmarket, "prices");
-                if(prices != NULL){
-                    avg_price = cJSON_GetObjectItem(prices, "avg30");
-                    if(avg_price != NULL){
-                        avg_price_value = avg_price->valuedouble;
-                    }
-                }
-            }
-            
-            //Build query and send to db
-            query = sqlite3_mprintf(insert_cards, set_id, number_value,
-                                     name_value, 0, avg_price_value);
+            char *query = cards_query_from_json(data, i, set_id);
             db_exec(db, query);
-            
             sqlite3_free(query);
 
         }
