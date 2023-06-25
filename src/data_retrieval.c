@@ -96,17 +96,24 @@ void retrieve_sets(){
         //Insert the data, one set at a time
         cJSON *elem = NULL;
         cJSON *id = NULL;
-        char *id_value = NULL;
+        char *id_value;
         cJSON *name = NULL;
-        char *name_value = NULL;
+        char *name_value;
         cJSON *ncards_printed = NULL;
-        int ncards_printed_value = 0; //set size printed on the cards
+        int ncards_printed_value;
         cJSON *ncards_total = NULL;
-        int ncards_total_value = 0; //total number of cards printed in the set
+        int ncards_total_value;
         cJSON *release_date = NULL;
-        char *release_date_value = NULL;
+        char *release_date_value;
         char *query;
         for(int i = 0; i < set_count; i++){
+
+            //reset variables
+            id_value = NULL;
+            name_value = NULL;
+            ncards_printed_value = 0; //set size printed on the cards
+            ncards_total_value = 0; //total number of cards printed in the set
+            release_date_value = NULL;
 
             //Retrieve relevant data
             elem = cJSON_GetArrayItem(data, i);
@@ -228,15 +235,20 @@ void retrieve_set_cards(char *set_id){
         cJSON *elem = NULL;
         //We already have the set id as parameter, so no need to fetch it from url
         cJSON *number = NULL; 
-        char *number_value = NULL;
+        char *number_value;
         cJSON *name = NULL;
-        char *name_value = NULL;
+        char *name_value;
         cJSON *cardmarket = NULL;
         cJSON *prices = NULL;
         cJSON *avg_price = NULL;
-        double avg_price_value = 0.0f;
+        double avg_price_value;
         char *query;
         for(int i = 0; i < card_count; i++){
+
+            //reset variables
+            number_value = NULL;
+            name_value = NULL;
+            avg_price_value = 0.0f;
 
             //Retrieve relevant data
             elem = cJSON_GetArrayItem(data, i);
