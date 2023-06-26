@@ -6,6 +6,7 @@
 
 extern const char *insert_sets;
 extern const char *select_set_ids;
+extern const char *set_exists;
 extern const char *insert_cards;
 extern const char *card_owned;
 extern const char *card_not_owned;
@@ -21,6 +22,6 @@ int db_exec(sqlite3 *db, const char *query);
 void db_exec_callback(sqlite3 *db, const char *query, 
                                 int (*cb)(void *, int,  char **, char **), 
                                 ll_node *head);
-                                
+
 
 #endif

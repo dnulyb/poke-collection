@@ -14,7 +14,8 @@ static const char *create_sets = "CREATE TABLE Sets(" \
 
 const char *insert_sets = "INSERT INTO Sets VALUES(%Q,%Q,'%d','%d',%Q);";
 const char *select_set_ids = "SELECT ID FROM Sets ORDER BY ReleaseDate ASC;";
-
+const char *set_exists = "SELECT EXISTS(SELECT 1 FROM Sets " \
+                            "WHERE ID = %Q);";
 
 
 static const char *create_cards = "CREATE TABLE Cards(" \

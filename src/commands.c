@@ -6,6 +6,33 @@
 #include "db.h"
 #include "data_retrieval.h"
 
+void cards_download_all(){
+
+    ll_node *head = get_db_sets();
+    ll_node *temp = head;
+    while(temp != NULL){
+
+        retrieve_set_cards(temp->data);
+        printf("set cards downloaded: %s\n", temp->data);
+        temp = temp->next;
+    }
+    list_delete(head);
+
+}
+
+void cards_download_single_set(char *set_id){
+
+    //TODO: Check if set exists in db
+    if(check_set_exists(set_id) != 0){
+        //Set does not exist
+        fprintf(stderr, "Error: Cards not downloaded: Set does not exist in db.\n");
+        return;
+    }
+
+    retrieve_set_cards(set_id);
+    printf("set cards downloaded: %s\n", set_id);
+
+}
 
 /*
     Full setup of the database.
@@ -24,19 +51,33 @@ void setup_full(){
 
     //Get card data for each set
     printf("downloading cards from sets:\n");
-    ll_node *head = get_db_sets();
-    ll_node *temp = head;
-    while(temp != NULL){
-
-        retrieve_set_cards(temp->data);
-        printf("set cards downloaded: %s\n", temp->data);
-        temp = temp->next;
-    }
+    cards_download_all();
     printf("cards download complete.\n");
-    list_delete(head);
 
     printf("setup_full complete.\n");
     
+}
+
+/*
+    Lite setup of the database.
+    Will create all tables,
+        but only downloads Sets data and no Cards data.
+*/
+void setup_lite(){
+
+    printf("setup_lite started:\n");
+
+    //Create db tables
+    db_setup(); 
+    printf("db tables created.\n");
+    //Get info for all sets
+    retrieve_sets();
+    printf("set data downloaded.\n");
+    printf("card data will not be downloaded," \
+            " it must be done manually with a separate command.\n");
+
+    printf("setup_lite complete.\n");
+
 }
 
 //argv[2] contains the set id
@@ -100,18 +141,32 @@ void perform_command(int argc, char *argv[]){
 
         fprintf(stderr, "collected command not implemented\n");
 
-
     }else if(strcmp(command, "missing") == 0){
 
         fprintf(stderr, "missing command not implemented\n");
-
 
     }else if(strcmp(command, "setup_full") == 0){
         
         setup_full();
     
+    }else if(strcmp(command, "setup_lite") == 0){
+
+        setup_lite();
+
+    }else if(strcmp(command, "download_cards_all") == 0){
+
+        cards_download_all();
+
+    }else if(strcmp(command, "download_cards_set") == 0){
+
+        if(argv[2] == NULL){
+            fprintf(stderr, "No set given, exiting...\n");
+            return;
+        }
+        cards_download_single_set(argv[2]);
+
     }else{
-        printf("ERROR: Invalid command\n");
+        fprintf(stderr, "ERROR: Invalid command. Exiting...\n");
     }
 
 }

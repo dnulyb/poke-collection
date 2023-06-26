@@ -210,6 +210,32 @@ ll_node* get_db_sets(){
 
 }
 
+//Return: 0 if card exists, else -1 
+int check_set_exists(char *set_id){
+
+    sqlite3 *db = db_open();
+    ll_node *head = list_create();
+    char *query;
+
+    if(db != NULL){
+
+        query = sqlite3_mprintf(set_exists, set_id);
+        db_exec_callback(db, query, exists_callback, head);
+        sqlite3_free(query);
+    }
+
+    db_close(db);
+
+    if(head->data != NULL){
+        if(strcmp("1", head->data) == 0){
+            //Set exists
+            return 0;
+        }
+    }
+
+    return -1;
+}
+
 char* cards_query_from_json(cJSON *data, int i, char *set_id){
 
     cJSON *elem = NULL;
