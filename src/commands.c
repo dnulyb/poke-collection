@@ -8,7 +8,7 @@
 
 void cards_download_all(){
 
-    ll_node *head = get_db_sets();
+    ll_node *head = get_db_data(select_set_ids, callback_single_col);
     ll_node *temp = head;
     while(temp != NULL){
 
@@ -22,7 +22,7 @@ void cards_download_all(){
 
 void cards_download_single_set(char *set_id){
 
-    //TODO: Check if set exists in db
+    //Check if set exists in db
     if(check_set_exists(set_id) != 0){
         //Set does not exist
         fprintf(stderr, "Error: Cards not downloaded: Set does not exist in db.\n");
@@ -77,6 +77,43 @@ void setup_lite(){
             " it must be done manually with a separate command.\n");
 
     printf("setup_lite complete.\n");
+
+}
+
+void collected(char *set_id){
+
+    //Check if set exists in db
+    if(check_set_exists(set_id) != 0){
+        //Set does not exist
+        fprintf(stderr, "Error: Cannot display collected cards: Set does not exist in db.\n");
+        return;
+    }
+
+    //Make sure there is data to collect
+    char *check_query = sqlite3_mprintf(count_collected, set_id);
+    ll_node *check = get_db_data(check_query, callback_single_col);
+    sqlite3_free(check_query);
+
+    if(strcmp(check->data, "0") == 0){
+        printf("No collected cards for set %s.\n", set_id);
+        list_delete(check);
+        return;
+    }
+
+    char *query = sqlite3_mprintf(select_collected, set_id);
+    ll_node *head = get_db_data(query, select_cards_callback);
+    ll_node *temp = head;
+
+    printf("Collected cards for set %s:\n", set_id);
+    while(temp != NULL){
+        printf("%s\n", temp->data);
+        temp = temp->next;
+    }
+    printf("End of collected cards for set %s.\n", set_id);
+    list_delete(check);
+    list_delete(head);
+    sqlite3_free(query);
+
 
 }
 
@@ -139,7 +176,11 @@ void perform_command(int argc, char *argv[]){
 
     }else if(strcmp(command, "collected") == 0){
 
-        fprintf(stderr, "collected command not implemented\n");
+        if(argv[2] == NULL){
+            fprintf(stderr, "No set given, exiting...\n");
+            return;
+        }
+        collected(argv[2]);
 
     }else if(strcmp(command, "missing") == 0){
 

@@ -11,9 +11,11 @@ extern const char *insert_cards;
 extern const char *card_owned;
 extern const char *card_not_owned;
 extern const char *card_exists;
+extern const char *select_collected;
+extern const char *count_collected;
 
-int sets_callback(void *list, int ncols, char **data, char **cols);
-int exists_callback(void *list, int ncols, char **data, char **cols);
+int callback_single_col(void *list, int ncols, char **data, char **cols);
+int select_cards_callback(void *list, int ncols, char **data, char **cols);
 
 sqlite3* db_open();
 void db_close(sqlite3 *db);

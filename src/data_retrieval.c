@@ -194,14 +194,15 @@ void retrieve_sets(){
 
 //Caller is responsible for freeing list memory
 //  with list_delete
-ll_node* get_db_sets(){
+ll_node* get_db_data(const char *query, 
+                        int (*cb)(void *, int,  char **, char **)){
 
     sqlite3 *db = db_open();
     ll_node *head = list_create();
 
     if(db != NULL){
 
-        db_exec_callback(db, select_set_ids, sets_callback, head);
+        db_exec_callback(db, query, cb, head);
     }
 
     db_close(db);
@@ -220,7 +221,7 @@ int check_set_exists(char *set_id){
     if(db != NULL){
 
         query = sqlite3_mprintf(set_exists, set_id);
-        db_exec_callback(db, query, exists_callback, head);
+        db_exec_callback(db, query, callback_single_col, head);
         sqlite3_free(query);
     }
 
@@ -229,9 +230,12 @@ int check_set_exists(char *set_id){
     if(head->data != NULL){
         if(strcmp("1", head->data) == 0){
             //Set exists
+            list_delete(head);
             return 0;
         }
     }
+
+    list_delete(head);
 
     return -1;
 }
@@ -405,7 +409,7 @@ int check_card_exists(char *set_id, char *number){
     if(db != NULL){
 
         query = sqlite3_mprintf(card_exists, set_id, number);
-        db_exec_callback(db, query, exists_callback, head);
+        db_exec_callback(db, query, callback_single_col, head);
         sqlite3_free(query);
     }
 

@@ -13,7 +13,8 @@ typedef struct {
 
 
 void retrieve_sets();
-ll_node* get_db_sets();
+ll_node* get_db_data(const char *query, 
+                        int (*cb)(void *, int,  char **, char **));
 void retrieve_set_cards(char *set_id);
 int check_set_exists(char *set_id);
 int set_card_owned(char *set_id, char *number, bool owned);

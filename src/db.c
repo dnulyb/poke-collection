@@ -34,9 +34,19 @@ const char *card_not_owned = "UPDATE Cards SET Collected = 0 " \
                             "WHERE SetId = %Q AND Number = %Q;";
 
 const char *card_exists = "SELECT EXISTS(SELECT 1 FROM Cards " \
-                            "WHERE SetId = %Q AND Number = %Q);";
+                            "WHERE SetID = %Q AND Number = %Q);";
 
-int sets_callback(void *list, int ncols, char **data, char **cols){
+const char *count_collected = "SELECT COUNT(*) FROM Cards " \
+                                "WHERE SetID = %Q AND Collected = 1;";
+const char *select_collected = "SELECT Cards.Number, Sets.NCardsPrinted, Cards.Name " \
+                                "FROM Cards " \
+                                "INNER JOIN Sets ON Sets.ID = Cards.SetID " \
+                                "WHERE SetID = %Q AND Collected = 1 " \
+                                "ORDER BY CAST (Cards.Number AS INTEGER) ASC;";
+
+
+//Only use this with short values for now
+int callback_single_col(void *list, int ncols, char **data, char **cols){
 
     ll_node *head = list;
 
@@ -46,15 +56,23 @@ int sets_callback(void *list, int ncols, char **data, char **cols){
     list_add(head, buffer);
 
     return 0;
-    
+
 }
 
-int exists_callback(void *list, int ncols, char **data, char **cols){
+int select_cards_callback(void *list, int ncols, char **data, char **cols){
 
     ll_node *head = list;
 
-    char *buffer = malloc(sizeof(char) * 32);
-    strcpy(buffer, data[0]);
+    char *buffer = calloc(sizeof(char), 256);
+    for(int i = 0; i < ncols; i++){
+
+        strcat(buffer, data[i]);
+
+        if(i == 0)
+            strcat(buffer, "/");
+        if(i == 1)
+            strcat(buffer, " ");
+    }
 
     list_add(head, buffer);
 
@@ -148,7 +166,7 @@ void db_exec_callback(sqlite3 *db, const char *query,
 
     if(rc){
         fprintf(stderr, "Failed sqlite3_exec in db_exec_exists_callback: %s\n", sqlite3_errmsg(db));
-        sqlite3_free(err_msg);        
+        sqlite3_free(err_msg);   
     }
 
 }
