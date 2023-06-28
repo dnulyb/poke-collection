@@ -1,4 +1,4 @@
-TARGET = main
+TARGET = pokecollection
 CC = gcc
 CFLAGS = -g -std=c11 -Wall
 LFLAGS = -lsqlite3 -lcurl -lcjson
